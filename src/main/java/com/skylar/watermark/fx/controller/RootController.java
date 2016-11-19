@@ -1,14 +1,21 @@
 package com.skylar.watermark.fx.controller;
 
 import com.jfoenix.controls.*;
+import com.skylar.watermark.fx.helper.PropertyStore;
+import com.skylar.watermark.fx.helper.WatermarkerProperty;
 import com.skylar.watermark.fx.utils.FileUtils;
+import com.skylar.watermark.fx.utils.UIUtils;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
 import com.skylar.watermark.fx.utils.ImageHelper;
@@ -20,16 +27,21 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+
+import static com.skylar.watermark.fx.helper.WatermarkerProperty.*;
 
 public class RootController {
 
     private static final File image = new File(FileUtils.getFile("image/default-slide-img.jpg").getFile());
 
+    private PropertyStore propertyStore;
+
     private int countImagesInSourceFolder;
+    private int processedImages;
 
     public RootController() {
+        propertyStore = new PropertyStore();
+        propertyStore.loadProperties();
     }
 
     //Editable image
@@ -68,6 +80,8 @@ public class RootController {
     private Label labelDestinationFolder;
     @FXML
     private javafx.stage.Window window;
+    @FXML
+    private MenuItem configurationItem;
 
     private File sourceFolderFile;
     private File destinationFolderFile;
@@ -77,8 +91,10 @@ public class RootController {
         DirectoryChooser directoryChooser = new DirectoryChooser();
         directoryChooser.setTitle("Укажите директорию с изображениями");
         File file = directoryChooser.showDialog(window);
-        labelSourceFolder.setText(file.getAbsolutePath());
-        sourceFolderFile = file;
+        if (file != null) {
+            labelSourceFolder.setText(file.getAbsolutePath());
+            sourceFolderFile = file;
+        }
         validateIsCanEnableGeneration();
 
         EventQueue.invokeLater(()-> countFiles(sourceFolderFile));
@@ -91,8 +107,10 @@ public class RootController {
         DirectoryChooser directoryChooser = new DirectoryChooser();
         directoryChooser.setTitle("Укажите директориюдля сохранения");
         File file = directoryChooser.showDialog(window);
-        labelDestinationFolder.setText(file.getAbsolutePath());
-        destinationFolderFile = file;
+        if (file != null) {
+            labelDestinationFolder.setText(file.getAbsolutePath());
+            destinationFolderFile = file;
+        }
         validateIsCanEnableGeneration();
     }
 
@@ -107,6 +125,8 @@ public class RootController {
 
         ProgressDialog progressDialog = new ProgressDialog(service);
         progressDialog.setTitle("Обработка файлов");
+        progressDialog.setOnCloseRequest(event -> service.cancel());
+        progressDialog.setOnHiding(event -> UIUtils.showAlert("Обработка завершена", "Обработанно " + processedImages + " файлов"));
         service.start();
     }
 
@@ -132,44 +152,52 @@ public class RootController {
             imageView.setImage(writableImage);
         } catch (Exception e) {
             e.printStackTrace();
-            showErrorAlert(e);
+            UIUtils.showErrorAlert(e);
         }
     }
 
     @FXML
     public void initialize() {
-        initFonts();
-        validateIsCanEnableGeneration();
         this.radius.valueProperty().addListener((observable, oldValue, newValue) -> updatePrototypeImage());
         this.text.setOnKeyReleased(event -> {
             validateIsCanEnableGeneration();
             updatePrototypeImage();
         });
+        fontList.setItems(FXCollections.observableList(UIUtils.getFontNames()));
+        fontList.getSelectionModel().select(propertyStore.getProperty(FONT));
+        colorPicker.setValue(javafx.scene.paint.Color.valueOf(propertyStore.getProperty(COLOR)));
+        opacility.setText(propertyStore.getProperty(OPACITY));
+        sizeText.setText(propertyStore.getProperty(TEXT_SIZE));
+        stepX.setText(propertyStore.getProperty(STEP_X));
+        stepY.setText(propertyStore.getProperty(STEP_Y));
+        radius.setValue(Double.parseDouble(propertyStore.getProperty(RADIUS)));
+        text.setText(propertyStore.getProperty(TEXT));
+
+        updatePrototypeImage();
+        validateIsCanEnableGeneration();
     }
 
     @FXML
-    void initFonts() {
-        GraphicsEnvironment e = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        Font[] fonts = e.getAllFonts();
-        List<String> fontNameList = new ArrayList<>();
-        for (Font font : fonts)
-            fontNameList.add(font.getFontName());
-
-        fontList.setItems(FXCollections.observableList(fontNameList));
-        fontList.getSelectionModel().selectFirst();
+    void openConfigurationWindow() {
+        try{
+            Stage stage = new Stage();
+            FXMLLoader fxmlLoader = new FXMLLoader(FileUtils.getFile("fxml/configuration.fxml"));
+            fxmlLoader.setController(new ConfigurationController(propertyStore, stage));
+            Parent root = fxmlLoader.load();
+            stage.initModality(Modality.NONE);
+            stage.initStyle(StageStyle.UNDECORATED);
+            stage.setTitle("Стандартные параметры");
+            stage.setScene(new Scene(root));
+            stage.show();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
 
     // ------------------------ HELPER METHODS ------------------------ //
 
-    private void showErrorAlert(Exception e) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Error");
-        alert.setHeaderText(e.getClass().getName());
-        alert.setContentText(e.getMessage());
 
-        alert.showAndWait();
-    }
 
     private String getText() {
         return this.text.getText();
@@ -248,8 +276,6 @@ public class RootController {
     }
 
     private class TaskVoid extends Task<Void> {
-
-        private int processedImages;
 
         public TaskVoid() {
             processedImages = 0;
