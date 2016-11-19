@@ -2,7 +2,6 @@ package com.skylar.watermark.fx.controller;
 
 import com.jfoenix.controls.*;
 import com.skylar.watermark.fx.helper.PropertyStore;
-import com.skylar.watermark.fx.helper.WatermarkerProperty;
 import com.skylar.watermark.fx.utils.FileUtils;
 import com.skylar.watermark.fx.utils.UIUtils;
 import javafx.collections.FXCollections;
@@ -32,7 +31,7 @@ import static com.skylar.watermark.fx.helper.WatermarkerProperty.*;
 
 public class RootController {
 
-    private static final File image = new File(FileUtils.getFile("image/default-slide-img.jpg").getFile());
+    private static final File image = new File(FileUtils.getFile("META-INF/image/default-slide-img.jpg").getFile());
 
     private PropertyStore propertyStore;
 
@@ -181,7 +180,7 @@ public class RootController {
     void openConfigurationWindow() {
         try{
             Stage stage = new Stage();
-            FXMLLoader fxmlLoader = new FXMLLoader(FileUtils.getFile("fxml/configuration.fxml"));
+            FXMLLoader fxmlLoader = new FXMLLoader(FileUtils.getFile("META-INF/fxml/configuration.fxml"));
             fxmlLoader.setController(new ConfigurationController(propertyStore, stage));
             Parent root = fxmlLoader.load();
             stage.initModality(Modality.NONE);

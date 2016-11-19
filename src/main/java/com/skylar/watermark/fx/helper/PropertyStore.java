@@ -19,7 +19,7 @@ public class PropertyStore {
 
     public void loadProperties() {
         try {
-            URL url = FileUtils.getFile("configuration.properties");
+            URL url = FileUtils.getFile("META-INF/configuration.properties");
             properties.load(new FileInputStream(url.getFile()));
             config = new PropertiesConfiguration(url.getFile());
         } catch (IOException | ConfigurationException e) {
