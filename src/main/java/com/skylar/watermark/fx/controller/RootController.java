@@ -25,15 +25,12 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
 import static com.skylar.watermark.fx.helper.WatermarkerProperty.*;
 
 public class RootController {
-
-    private static final InputStream image = FileUtils.getResourceAsStream("/META-INF/image/default-slide-img.jpg");
 
     private PropertyStore propertyStore;
 
@@ -139,14 +136,14 @@ public class RootController {
     @FXML
     void updatePrototypeImage() {
         //convert image with parameters
-        try {
+        try (InputStream inputStream = FileUtils.getResourceAsStream("/META-INF/image/default-slide-img.jpg")) {
             java.awt.Color color = getColor();
             Font font = getFont();
             String text = getText();
             int radius = getRadius();
             int stepX = getStepX();
             int stepY = getStepY();
-            BufferedImage bufferedImage = ImageHelper.addWaterMarkToImage(image, color, font, text, radius, stepX, stepY);
+            BufferedImage bufferedImage = ImageHelper.addWaterMarkToImage(inputStream, color, font, text, radius, stepX, stepY);
             WritableImage writableImage = new WritableImage(bufferedImage.getWidth(), bufferedImage.getHeight());
             SwingFXUtils.toFXImage(bufferedImage, writableImage);
             imageView.setImage(writableImage);
@@ -283,7 +280,12 @@ public class RootController {
 
         @Override
         protected Void call() throws Exception {
-            generate();
+            try {
+                generate();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+
             return null;
         }
 
@@ -340,7 +342,7 @@ public class RootController {
                 int stepX = getStepX();
                 int stepY = getStepY();
 
-                BufferedImage bufferedImage = ImageHelper.addWaterMarkToImage(new FileInputStream(srcFile), color, font, text, radius, stepX, stepY);
+                BufferedImage bufferedImage = ImageHelper.addWaterMarkToImage(srcFile, color, font, text, radius, stepX, stepY);
                 ImageIO.write(bufferedImage, format, destFile);
                 processedImages++;
                 updateMessage("Обработано " + processedImages + " из " + countImagesInSourceFolder);

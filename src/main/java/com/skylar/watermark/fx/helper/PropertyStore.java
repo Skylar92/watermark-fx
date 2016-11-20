@@ -17,11 +17,10 @@ public class PropertyStore {
 
     public void loadProperties() {
         try {
-            InputStream resourceAsStream = FileUtils.getResourceAsStream("/META-INF/configuration.properties");
-            properties.load(resourceAsStream);
-            //don't work in JavaFX Application
-            config = null;//new PropertiesConfiguration(FileUtils.getFile("META-INF/configuration.properties").getFile());
-        } catch (IOException  e) {
+            File propertiesFile = new File(".\\META-INF\\configuration.properties");
+            properties.load(new FileInputStream(propertiesFile));
+            config = new PropertiesConfiguration(propertiesFile);
+        } catch (IOException | ConfigurationException e) {
             throw new RuntimeException(e);
         }
     }
@@ -34,12 +33,13 @@ public class PropertyStore {
         return Integer.parseInt(properties.getProperty(propertyName));
     }
 
-    public void saveProperty(String propertyName, String propertyValue) {
+    public boolean saveProperty(String propertyName, String propertyValue) {
         if (config == null)
-            return;
+            return false;
         try {
             config.setProperty(propertyName, propertyValue);
             config.save();
+            return true;
         } catch (ConfigurationException e) {
             throw new RuntimeException(e);
         }

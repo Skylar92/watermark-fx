@@ -64,7 +64,7 @@ public class ConfigurationController {
         propertyStore.saveProperty(RADIUS, String.valueOf(this.radius.getValue()));
         propertyStore.saveProperty(TEXT, text.getText());
         propertyStore.saveProperty(FONT, fontList.getSelectionModel().getSelectedItem().toString());
-
+        UIUtils.showAlert("Выполнено! Настройки сохранены", "Требуется перезагрузить приложения для загрузки новых настроек");
         stage.close();
     }
 
