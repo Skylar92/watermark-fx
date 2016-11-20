@@ -25,13 +25,15 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 
 import static com.skylar.watermark.fx.helper.WatermarkerProperty.*;
 
 public class RootController {
 
-    private static final File image = new File(FileUtils.getFile("META-INF/image/default-slide-img.jpg").getFile());
+    private static final InputStream image = FileUtils.getResourceAsStream("/META-INF/image/default-slide-img.jpg");
 
     private PropertyStore propertyStore;
 
@@ -144,7 +146,6 @@ public class RootController {
             int radius = getRadius();
             int stepX = getStepX();
             int stepY = getStepY();
-
             BufferedImage bufferedImage = ImageHelper.addWaterMarkToImage(image, color, font, text, radius, stepX, stepY);
             WritableImage writableImage = new WritableImage(bufferedImage.getWidth(), bufferedImage.getHeight());
             SwingFXUtils.toFXImage(bufferedImage, writableImage);
@@ -339,7 +340,7 @@ public class RootController {
                 int stepX = getStepX();
                 int stepY = getStepY();
 
-                BufferedImage bufferedImage = ImageHelper.addWaterMarkToImage(srcFile, color, font, text, radius, stepX, stepY);
+                BufferedImage bufferedImage = ImageHelper.addWaterMarkToImage(new FileInputStream(srcFile), color, font, text, radius, stepX, stepY);
                 ImageIO.write(bufferedImage, format, destFile);
                 processedImages++;
                 updateMessage("Обработано " + processedImages + " из " + countImagesInSourceFolder);

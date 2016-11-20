@@ -6,13 +6,14 @@ import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.InputStream;
 
 /**
  * Created by Skylar on 11/17/2016.
  */
 public class ImageHelper {
 
-    public static BufferedImage addWaterMarkToImage(File image, Color color, Font font, String text, int radius, int stepX, int stepY) throws Exception {
+    public static BufferedImage addWaterMarkToImage(InputStream image, Color color, Font font, String text, int radius, int stepX, int stepY) throws Exception {
         BufferedImage processImage = ImageIO.read(image);
         int height = processImage.getHeight();
         int width = processImage.getWidth();

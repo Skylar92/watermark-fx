@@ -4,9 +4,7 @@ import com.skylar.watermark.fx.utils.FileUtils;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.net.URL;
+import java.io.*;
 import java.util.Properties;
 
 /**
@@ -19,10 +17,11 @@ public class PropertyStore {
 
     public void loadProperties() {
         try {
-            URL url = FileUtils.getFile("META-INF/configuration.properties");
-            properties.load(new FileInputStream(url.getFile()));
-            config = new PropertiesConfiguration(url.getFile());
-        } catch (IOException | ConfigurationException e) {
+            InputStream resourceAsStream = FileUtils.getResourceAsStream("/META-INF/configuration.properties");
+            properties.load(resourceAsStream);
+            //don't work in JavaFX Application
+            config = null;//new PropertiesConfiguration(FileUtils.getFile("META-INF/configuration.properties").getFile());
+        } catch (IOException  e) {
             throw new RuntimeException(e);
         }
     }
@@ -36,6 +35,8 @@ public class PropertyStore {
     }
 
     public void saveProperty(String propertyName, String propertyValue) {
+        if (config == null)
+            return;
         try {
             config.setProperty(propertyName, propertyValue);
             config.save();
