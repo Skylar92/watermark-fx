@@ -17,14 +17,13 @@ import static com.skylar.watermark.fx.helper.WatermarkerProperty.*;
 /**
  * Created by Skylar on 11/20/2016.
  */
-public class ConfigurationController {
+public class ConfigurationController implements IController {
 
     private PropertyStore propertyStore;
     private Stage stage;
 
-    public ConfigurationController(PropertyStore propertyStore, Stage stage) {
+    public ConfigurationController(PropertyStore propertyStore) {
         this.propertyStore = propertyStore;
-        this.stage = stage;
     }
 
     @FXML
@@ -82,4 +81,8 @@ public class ConfigurationController {
         fontList.getSelectionModel().select(propertyStore.getProperty(FONT));
     }
 
+    @Override
+    public void setStage(Stage stage) {
+        this.stage = stage;
+    }
 }

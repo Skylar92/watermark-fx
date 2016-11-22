@@ -1,8 +1,18 @@
 package com.skylar.watermark.fx.utils;
 
+import com.skylar.watermark.fx.controller.ConfigurationController;
+import com.skylar.watermark.fx.controller.IController;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 import java.awt.*;
+import java.io.IOException;
+import java.net.URL;
 import java.util.*;
 import java.util.List;
 
@@ -35,6 +45,35 @@ public class UIUtils {
         alert.setHeaderText(title);
         alert.setContentText(text);
         alert.showAndWait();
+    }
+
+    public static <T extends IController> Stage createWindow(URL fileFxml, String title, T controller, Modality modality, StageStyle style) throws IOException {
+        Stage stage = new Stage();
+        FXMLLoader fxmlLoader = new FXMLLoader(fileFxml);
+        controller.setStage(stage);
+        fxmlLoader.setController(controller);
+        Parent root = fxmlLoader.load();
+        stage.initModality(modality);
+        stage.initStyle(style);
+        stage.setTitle(title);
+        stage.setScene(new Scene(root));
+        return stage;
+    }
+
+    public static int parseSafeIntFromString(String value, int defaultValue) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ex) {
+            return defaultValue;
+        }
+    }
+
+    public static float parseSafeFloatFromString(String value, float defaultValue) {
+        try {
+            return Float.parseFloat(value);
+        } catch (NumberFormatException ex) {
+            return defaultValue;
+        }
     }
 
 }

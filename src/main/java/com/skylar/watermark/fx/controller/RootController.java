@@ -2,16 +2,12 @@ package com.skylar.watermark.fx.controller;
 
 import com.jfoenix.controls.*;
 import com.skylar.watermark.fx.helper.PropertyStore;
+import com.skylar.watermark.fx.task.ImposeWatermarkService;
 import com.skylar.watermark.fx.utils.FileUtils;
 import com.skylar.watermark.fx.utils.UIUtils;
 import javafx.collections.FXCollections;
-import javafx.concurrent.Service;
-import javafx.concurrent.Task;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
@@ -21,25 +17,23 @@ import com.skylar.watermark.fx.utils.ImageHelper;
 import javafx.stage.*;
 import org.controlsfx.dialog.ProgressDialog;
 
-import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.IOException;
 import java.io.InputStream;
 
 import static com.skylar.watermark.fx.helper.WatermarkerProperty.*;
+import static com.skylar.watermark.fx.utils.UIUtils.createWindow;
+import static com.skylar.watermark.fx.utils.UIUtils.parseSafeFloatFromString;
+import static com.skylar.watermark.fx.utils.UIUtils.parseSafeIntFromString;
 
-public class RootController {
+public class RootController implements IController {
 
     private PropertyStore propertyStore;
-
-    private int countImagesInSourceFolder;
-    private int processedImages;
+    private Stage stage;
 
     public RootController() {
         propertyStore = new PropertyStore();
-        propertyStore.loadProperties();
     }
 
     //Editable image
@@ -94,10 +88,7 @@ public class RootController {
             sourceFolderFile = file;
         }
         validateIsCanEnableGeneration();
-
-        EventQueue.invokeLater(()-> countFiles(sourceFolderFile));
     }
-
 
 
     @FXML
@@ -114,17 +105,11 @@ public class RootController {
 
     @FXML
     void generate() {
-        final Service<Void> service = new Service<Void>() {
-            @Override
-            protected Task<Void> createTask() {
-                return new TaskVoid();
-            }
-        };
-
+        final ImposeWatermarkService service = new ImposeWatermarkService(getColor(), getFont(), getText(), getRadius(), getStepX(), getStepY(), sourceFolderFile, destinationFolderFile);
         ProgressDialog progressDialog = new ProgressDialog(service);
         progressDialog.setTitle("Обработка файлов");
         progressDialog.setOnCloseRequest(event -> service.cancel());
-        progressDialog.setOnHiding(event -> UIUtils.showAlert("Обработка завершена", "Обработанно " + processedImages + " файлов"));
+        progressDialog.setOnHiding(event -> UIUtils.showAlert("Обработка завершена", "Обработанно " + service.getCountProcessedFiles() + " файлов"));
         service.start();
     }
 
@@ -137,13 +122,7 @@ public class RootController {
     void updatePrototypeImage() {
         //convert image with parameters
         try (InputStream inputStream = FileUtils.getResourceAsStream("/META-INF/image/default-slide-img.jpg")) {
-            java.awt.Color color = getColor();
-            Font font = getFont();
-            String text = getText();
-            int radius = getRadius();
-            int stepX = getStepX();
-            int stepY = getStepY();
-            BufferedImage bufferedImage = ImageHelper.addWaterMarkToImage(inputStream, color, font, text, radius, stepX, stepY);
+            BufferedImage bufferedImage = ImageHelper.addWaterMarkToImage(inputStream, getColor(), getFont(), getText(), getRadius(), getStepX(), getStepY());
             WritableImage writableImage = new WritableImage(bufferedImage.getWidth(), bufferedImage.getHeight());
             SwingFXUtils.toFXImage(bufferedImage, writableImage);
             imageView.setImage(writableImage);
@@ -155,12 +134,26 @@ public class RootController {
 
     @FXML
     public void initialize() {
+        setUp();
+        addCustomListener();
+        initializeDefaultFiledsWithProperties();
+        updatePrototypeImage();
+        validateIsCanEnableGeneration();
+    }
+
+    private void setUp() {
+        fontList.setItems(FXCollections.observableList(UIUtils.getFontNames()));
+    }
+
+    private void addCustomListener() {
         this.radius.valueProperty().addListener((observable, oldValue, newValue) -> updatePrototypeImage());
         this.text.setOnKeyReleased(event -> {
             validateIsCanEnableGeneration();
             updatePrototypeImage();
         });
-        fontList.setItems(FXCollections.observableList(UIUtils.getFontNames()));
+    }
+
+    private void initializeDefaultFiledsWithProperties() {
         fontList.getSelectionModel().select(propertyStore.getProperty(FONT));
         colorPicker.setValue(javafx.scene.paint.Color.valueOf(propertyStore.getProperty(COLOR)));
         opacility.setText(propertyStore.getProperty(OPACITY));
@@ -169,23 +162,18 @@ public class RootController {
         stepY.setText(propertyStore.getProperty(STEP_Y));
         radius.setValue(Double.parseDouble(propertyStore.getProperty(RADIUS)));
         text.setText(propertyStore.getProperty(TEXT));
-
-        updatePrototypeImage();
-        validateIsCanEnableGeneration();
     }
+
 
     @FXML
     void openConfigurationWindow() {
-        try{
-            Stage stage = new Stage();
-            FXMLLoader fxmlLoader = new FXMLLoader(FileUtils.getFile("META-INF/fxml/configuration.fxml"));
-            fxmlLoader.setController(new ConfigurationController(propertyStore, stage));
-            Parent root = fxmlLoader.load();
-            stage.initModality(Modality.NONE);
-            stage.initStyle(StageStyle.UNDECORATED);
-            stage.setTitle("Стандартные параметры");
-            stage.setScene(new Scene(root));
-            stage.show();
+        try {
+            Stage window = createWindow(FileUtils.getFile("META-INF/fxml/configuration.fxml"),
+                    "Стандартные параметры",
+                    new ConfigurationController(propertyStore),
+                    Modality.NONE,
+                    StageStyle.UNDECORATED);
+            window.show();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -193,7 +181,6 @@ public class RootController {
 
 
     // ------------------------ HELPER METHODS ------------------------ //
-
 
 
     private String getText() {
@@ -230,21 +217,6 @@ public class RootController {
         return destinationFolderFile;
     }
 
-    private int parseSafeIntFromString(String value, int defaultValue) {
-        try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException ex) {
-            return defaultValue;
-        }
-    }
-
-    private float parseSafeFloatFromString(String value, float defaultValue) {
-        try {
-            return Float.parseFloat(value);
-        } catch (NumberFormatException ex) {
-            return defaultValue;
-        }
-    }
 
     private void validateIsCanEnableGeneration() {
         generation.setDisable(true);
@@ -252,119 +224,8 @@ public class RootController {
             generation.setDisable(false);
     }
 
-    private void countFiles(File folder) {
-        File[] listOfFiles = folder.listFiles();
-
-        for (int i = 0; i < listOfFiles.length; i++) {
-            if (isImage(listOfFiles[i])) {
-                countImagesInSourceFolder++;
-            } else if (listOfFiles[i].isDirectory()) {
-                countFiles(listOfFiles[i]);
-            }
-        }
+    @Override
+    public void setStage(Stage stage) {
+        this.stage = stage;
     }
-
-    private boolean isImage(File file) {
-        try {
-            return ImageIO.read(file) != null;
-        } catch (IOException var3) {
-            return false;
-        }
-    }
-
-    private class TaskVoid extends Task<Void> {
-
-        public TaskVoid() {
-            processedImages = 0;
-        }
-
-        @Override
-        protected Void call() throws Exception {
-            try {
-                generate();
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-
-            return null;
-        }
-
-        private void generate() throws Exception {
-            File[] files = getSourceDirectory().listFiles();
-            this.doCopy(files, getDestinationFolder());
-
-        }
-
-        private void doCopy(File[] files, File destDir) throws Exception {
-            File[] var3 = files;
-            int var4 = files.length;
-
-            for (int var5 = 0; var5 < var4; ++var5) {
-                File file = var3[var5];
-                File copiedFile = new File(destDir, file.getName());
-                if (file.isDirectory()) {
-                    this.doCopyDirectory(file, copiedFile);
-                } else if (isImage(file)) {
-                    this.doCopyFile(file, copiedFile);
-                }
-            }
-
-        }
-
-        private void doCopyDirectory(File srcDir, File destDir) throws Exception {
-            if (destDir.exists()) {
-                if (!destDir.isDirectory()) {
-                    throw new IOException("Destination \'" + destDir + "\' exists but is not a directory");
-                }
-            } else if (!destDir.mkdirs()) {
-                return;
-            }
-
-            File[] files = srcDir.listFiles();
-            if (files == null) {
-                throw new IOException("Failed to list contents of " + srcDir);
-            } else {
-                this.doCopy(files, destDir);
-            }
-        }
-
-        private void doCopyFile(File srcFile, File destFile) throws Exception {
-            if (destFile.isDirectory()) {
-                throw new IOException("Destination \'" + destFile + "\' exists but is a directory");
-            } else {
-                String format = substringAfterLast(srcFile.getName(), ".");
-                format = isEmpty(format) ? "jpeg" : format;
-
-                java.awt.Color color = getColor();
-                Font font = getFont();
-                String text = getText();
-                int radius = getRadius();
-                int stepX = getStepX();
-                int stepY = getStepY();
-
-                BufferedImage bufferedImage = ImageHelper.addWaterMarkToImage(srcFile, color, font, text, radius, stepX, stepY);
-                ImageIO.write(bufferedImage, format, destFile);
-                processedImages++;
-                updateMessage("Обработано " + processedImages + " из " + countImagesInSourceFolder);
-            }
-        }
-
-        private String substringAfterLast(String str, String separator) {
-            if (isEmpty(str)) {
-                return str;
-            } else if (isEmpty(separator)) {
-                return "";
-            } else {
-                int pos = str.lastIndexOf(separator);
-                return pos != -1 && pos != str.length() - separator.length() ? str.substring(pos + separator.length()) : "";
-            }
-        }
-
-        private boolean isEmpty(CharSequence cs) {
-            return cs == null || cs.length() == 0;
-        }
-
-
-    }
-
 }

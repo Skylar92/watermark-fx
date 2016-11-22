@@ -15,6 +15,10 @@ public class PropertyStore {
     private Properties properties = new Properties();
     private PropertiesConfiguration config;
 
+    public PropertyStore() {
+        loadProperties();
+    }
+
     public void loadProperties() {
         try {
             File propertiesFile = new File(".\\META-INF\\configuration.properties");

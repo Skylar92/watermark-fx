@@ -7,6 +7,7 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 
 /**
@@ -54,6 +55,14 @@ public class ImageHelper {
                 (float) fx.getGreen(),
                 (float) fx.getBlue(),
                  opacity);
+    }
+
+    public static boolean isImage(File file) {
+        try {
+            return ImageIO.read(file) != null;
+        } catch (IOException var3) {
+            return false;
+        }
     }
 
 }
